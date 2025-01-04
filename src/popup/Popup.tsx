@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -9,26 +9,60 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  SelectChangeEvent,
 } from "@mui/material";
+
+interface Profile {
+  id: string;
+  name: string;
+  rules: {
+    pattern: string;
+    replacement: string;
+  }[];
+}
 
 const Popup: React.FC = () => {
   const [isEnabled, setIsEnabled] = useState(true);
-  const [selectedProfile, setSelectedProfile] = useState("default");
+  const [selectedProfileId, setSelectedProfileId] = useState("default");
   const [selectedLanguage, setSelectedLanguage] = useState("english");
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    const result = await chrome.storage.sync.get([
+      "isEnabled",
+      "activeProfileId",
+      "selectedLanguage",
+      "profiles",
+    ]);
+
+    setIsEnabled(result.isEnabled ?? true);
+    setSelectedProfileId(result.activeProfileId || "default");
+    setSelectedLanguage(result.selectedLanguage || "english");
+    setProfiles(result.profiles || []);
+  };
 
   const handleToggle = () => {
     setIsEnabled(!isEnabled);
-    // TODO: Implement chrome.storage.sync.set
+    chrome.storage.sync.set({ isEnabled: !isEnabled });
   };
 
-  const handleProfileChange = (event: any) => {
-    setSelectedProfile(event.target.value);
-    // TODO: Implement profile switching logic
+  const handleProfileChange = (event: SelectChangeEvent<string>) => {
+    const profileId = event.target.value;
+    setSelectedProfileId(profileId);
+    chrome.runtime.sendMessage(
+      { type: "SET_ACTIVE_PROFILE", profileId },
+      () => {}
+    );
   };
 
-  const handleLanguageChange = (event: any) => {
-    setSelectedLanguage(event.target.value);
-    // TODO: Implement language switching logic
+  const handleLanguageChange = (event: SelectChangeEvent<string>) => {
+    const language = event.target.value;
+    setSelectedLanguage(language);
+    chrome.storage.sync.set({ selectedLanguage: language });
   };
 
   return (
@@ -48,13 +82,15 @@ const Popup: React.FC = () => {
         <FormControl fullWidth size="small" sx={{ mb: 2 }}>
           <InputLabel>Profile</InputLabel>
           <Select
-            value={selectedProfile}
+            value={selectedProfileId}
             label="Profile"
             onChange={handleProfileChange}
           >
-            <MenuItem value="default">Default</MenuItem>
-            <MenuItem value="work">Work</MenuItem>
-            <MenuItem value="personal">Personal</MenuItem>
+            {profiles.map((profile) => (
+              <MenuItem key={profile.id} value={profile.id}>
+                {profile.name}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
 

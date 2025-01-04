@@ -3,7 +3,8 @@
   "name": "Efficient Typing System",
   "version": "1.0.0",
   "description": "Enhance typing efficiency with customizable shorthand and AI-powered expansions",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "host_permissions": ["http://*/*", "https://*/*", "file:///*"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -19,13 +20,23 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "matches": ["http://*/*", "https://*/*", "file:///*", "*://*/*"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "match_about_blank": true,
+      "run_at": "document_idle",
+      "world": "MAIN"
     }
   ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["content.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "options_page": "options.html"
 }
